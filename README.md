@@ -13,19 +13,17 @@ The sequence uses adjustable delays. It does not play audio or detect the song's
 
 ## Display photos
 
-Photos of the E84 AI Kit connected to the 1602 LCD during the display sequence.
+### Hardware setup and starting phrase
 
-### Startup greeting
+The connected E84 AI Kit and 1602 LCD showing the startup greeting, `Hello World`.
 
-![1602 LCD showing Hello World beside the E84 AI Kit](images/start_display.jpg)
+<img src="images/start_display.jpg" alt="E84 AI Kit wired to the LCD showing Hello World" width="720">
 
-### Lyrics in progress
+### Lyric sequence
 
-![1602 LCD showing a lyric page across both rows](images/middle_display.jpg)
-
-### Final lyric page
-
-![1602 LCD showing the final phrase, which remains visible until reset](images/ending_display.jpg)
+| Middle of the sequence | Ending display |
+|:---:|:---:|
+| <img src="images/middle_display.jpg" alt="LCD showing a lyric page during the sequence" width="240"> | <img src="images/ending_display.jpg" alt="LCD showing the final lyric page" width="240"> |
 
 ## Hardware and wiring
 
