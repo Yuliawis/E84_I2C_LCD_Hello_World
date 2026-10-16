@@ -36,9 +36,7 @@
 * thereof can reasonably be expected to result in personal injury.
 *******************************************************************************/
 
-/*******************************************************************************
-* Header Files
-*******************************************************************************/
+/* Header Files */
 #include "cybsp.h"
 #include "cy_time.h"
 #include "lcd1602.h"
@@ -51,32 +49,22 @@ volatile lcd_result_t lcd_status = LCD_ERROR_CONFIG;
 #include "cyabs_rtos.h"
 #include "cyabs_rtos_impl.h"
 
-/*******************************************************************************
- * Macros
- ******************************************************************************/
+/* Macros */
 
-/* The timeout value in microsecond used to wait for the CM55 core to be booted.
- * Use value 0U for infinite wait till the core is booted successfully.
- */
+/* The timeout value in microsecond used to wait for the CM55 core to be booted. Use value 0U for infinite wait till the core is booted successfully. */
 #define CM55_BOOT_WAIT_TIME_USEC            (10U)
 
 /* App boot address for CM55 project */
 #define CM55_APP_BOOT_ADDR                  (CYMEM_CM33_0_m55_nvm_START + \
                                                 CYBSP_MCUBOOT_HEADER_SIZE)
 
-/* Enabling or disabling a MCWDT requires a wait time of upto 2 CLK_LF cycles  
- * to come into effect. This wait time value will depend on the actual CLK_LF  
- * frequency set by the BSP.
- */
+/* Enabling or disabling a MCWDT requires a wait time of upto 2 CLK_LF cycles to come into effect. This wait time value will depend on the actual CLK_LF frequency set by the BSP. */
 #define LPTIMER_0_WAIT_TIME_USEC            (62U)
 
-/* Define the LPTimer interrupt priority number. '1' implies highest priority. 
- */
+/* Define the LPTimer interrupt priority number. '1' implies highest priority. */
 #define APP_LPTIMER_INTERRUPT_PRIORITY      (1U)
 
-/*******************************************************************************
- * Global Variables
- ******************************************************************************/
+/* Global Variables */
 
 #if defined(CYBSP_CM33_LPTIMER_0)
 /* LPTimer HAL object */
@@ -88,19 +76,7 @@ static mtb_hal_lptimer_t lptimer_obj;
 static mtb_hal_rtc_t rtc_obj;
 #endif /* defined(CYBSP_RTC) */
 
-/*******************************************************************************
-* Function Name: handle_app_error
-********************************************************************************
-* Summary:
-* User defined error handling function
-*
-* Parameters:
-*  void
-*
-* Return:
-*  void
-*
-*******************************************************************************/
+/* Stop execution after a startup or LCD error. */
 static void handle_app_error(void)
 {
     /* Disable all interrupts. */
@@ -112,21 +88,7 @@ static void handle_app_error(void)
     while(true);
 }
 
-/*******************************************************************************
-* Function Name: setup_clib_support
-********************************************************************************
-* Summary:
-*    1. This function configures and initializes the Real-Time Clock (RTC).
-*    2. It then initializes the RTC HAL object to enable CLIB support library 
-*       to work with the provided Real-Time Clock (RTC) module.
-*
-* Parameters:
-*  void
-*
-* Return:
-*  void
-*
-*******************************************************************************/
+/* Initialize the RTC and connect it to the C library support layer. */
 #if defined(CYBSP_RTC)
 static void setup_clib_support(void)
 {
@@ -139,43 +101,14 @@ static void setup_clib_support(void)
 }
 #endif /* defined(CYBSP_RTC) */
 
-/*******************************************************************************
-* Function Name: lptimer_interrupt_handler
-********************************************************************************
-* Summary:
-* Interrupt handler function for LPTimer instance. 
-*
-* Parameters:
-*  void
-*
-* Return:
-*  void
-*
-*******************************************************************************/
+/* Pass timer interrupts to the HAL. */
 #if defined(CYBSP_CM33_LPTIMER_0)
 static void lptimer_interrupt_handler(void)
 {
     mtb_hal_lptimer_process_interrupt(&lptimer_obj);
 }
 
-/*******************************************************************************
-* Function Name: setup_tickless_idle_timer
-********************************************************************************
-* Summary:
-*    1. This function first configures and initializes an interrupt for LPTimer.
-*    2. Then it initializes the LPTimer HAL object to be used in the RTOS 
-*       tickless idle mode implementation to allow the device enter deep sleep 
-*       when idle task runs. LPTIMER_0 instance is configured for CM33 CPU.
-*    3. It then passes the LPTimer object to abstraction RTOS library that 
-*       implements tickless idle mode
-*
-* Parameters:
-*  void
-*
-* Return:
-*  void
-*
-*******************************************************************************/
+/* Configure the low-power timer used by FreeRTOS tickless idle. */
 static void setup_tickless_idle_timer(void)
 {
     /* Interrupt configuration structure for LPTimer */
@@ -215,8 +148,7 @@ static void setup_tickless_idle_timer(void)
                     CY_MCWDT_CTR_Msk, 
                     LPTIMER_0_WAIT_TIME_USEC);
 
-    /* Setup LPTimer using the HAL object and desired configuration as defined
-     * in the device configurator. */
+    /* Setup LPTimer using the HAL object and desired configuration as defined in the device configurator. */
     cy_rslt_t result = mtb_hal_lptimer_setup(&lptimer_obj, 
                                             &CYBSP_CM33_LPTIMER_0_hal_config);
     
@@ -226,31 +158,12 @@ static void setup_tickless_idle_timer(void)
         handle_app_error();
     }
 
-    /* Pass the LPTimer object to abstraction RTOS library that implements 
-     * tickless idle mode 
-     */
+    /* Pass the LPTimer object to abstraction RTOS library that implements tickless idle mode */
     cyabs_rtos_set_lptimer(&lptimer_obj);
 }
 #endif /* defined(CYBSP_CM33_LPTIMER_0) */
 
-/*******************************************************************************
- * Function Name: main
- *******************************************************************************
- * Summary:
- * This is the main function for CM33 non-secure application. 
- *    1. It initializes the device and board peripherals.
- *    2. It sets up the CLIB support library for CM33 CPU. 
- *    3. It sets up the LPTimer instance for CM33 CPU. 
- *    4. It enables the CM55 CPU using 'Cy_SysEnableCM55'.
- *    5. It starts the RTOS task scheduler.
- *
- * Parameters:
- *  void
- *
- * Return:
- *  int
- *
- ******************************************************************************/
+/* Initialize the board, display Hello World, start CM55, and run FreeRTOS. */
 int main(void)
 {
     cy_rslt_t result;
@@ -293,7 +206,7 @@ int main(void)
     }
 
     /* Enable CM55. */
-    /* CM55_APP_BOOT_ADDR must be updated if CM55 memory layout is changed.*/
+    /* CM55_APP_BOOT_ADDR must be updated if CM55 memory layout is changed. */
     Cy_SysEnableCM55(MXCM55, CM55_APP_BOOT_ADDR, CM55_BOOT_WAIT_TIME_USEC);
 
     /* Enable global interrupts */

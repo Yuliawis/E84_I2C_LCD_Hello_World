@@ -13,7 +13,7 @@ static lcd_result_t finish_transfer(cy_en_scb_i2c_status_t status)
 {
     cy_en_scb_i2c_status_t stop = Cy_SCB_I2C_MasterSendStop(
         lcd_bus, LCD_TIMEOUT_MS, &lcd_context);
-    /* Allow the target to release the bus after STOP, with a finite timeout. */
+    /* Wait up to 1 ms for the bus to become idle after STOP. */
     uint32_t remaining = 1000U;
     while (Cy_SCB_I2C_IsBusBusy(lcd_bus) && remaining != 0U)
     {
@@ -47,7 +47,7 @@ static lcd_result_t command(uint8_t value)
     {
         result = write_nibble(value & 0x0FU, 0U);
     }
-    /* RW stays low; wait rather than reading the LCD busy flag. */
+    /* Keep RW low and allow time for the LCD instruction to finish. */
     Cy_SysLib_DelayUs((value == 0x01U || value == 0x02U) ? 2000U : 50U);
     return result;
 }
@@ -95,8 +95,7 @@ lcd_result_t lcd1602_init(CySCB_Type *base,
     {
         return LCD_ERROR_CONFIG;
     }
-    /* The PDL derives SCL timings/filter settings from the actual SCB clock.
-     * PCF8574 supports standard mode (100 kHz maximum). */
+    /* Calculate I2C timing from the SCB clock; limit the PCF8574 bus to 100 kHz. */
     lcd1602_bus_hz = Cy_SCB_I2C_SetDataRate(base, 100000U, clock_hz);
     if (lcd1602_bus_hz == 0U || lcd1602_bus_hz > 100000U)
     {
@@ -109,7 +108,7 @@ lcd_result_t lcd1602_init(CySCB_Type *base,
     {
         return result;
     }
-    /* Datasheet power-on sequence, including recovery from an MCU-only reset. */
+    /* Enter 4-bit mode after power-up or an MCU reset. */
     const uint8_t nibbles[] = {0x03U, 0x03U, 0x03U, 0x02U};
     for (uint32_t i = 0U; i < sizeof(nibbles); ++i)
     {
@@ -120,7 +119,7 @@ lcd_result_t lcd1602_init(CySCB_Type *base,
         }
         Cy_SysLib_DelayUs((i == 0U) ? 5000U : 200U);
     }
-    /* Four-bit, two-line, 5x8 font; off; clear; increment; on, no cursor. */
+    /* Select 4-bit, two-line mode; clear the display and enable text without a cursor. */
     const uint8_t commands[] = {0x28U, 0x08U, 0x01U, 0x06U, 0x0CU};
     for (uint32_t i = 0U; i < sizeof(commands); ++i)
     {
@@ -134,7 +133,7 @@ lcd_result_t lcd1602_init(CySCB_Type *base,
     return LCD_OK;
 }
 
-/* Row and column are zero-based. HD44780 row 2 begins at DDRAM 0x40. */
+/* Row 0 starts at DDRAM 0x00; row 1 starts at 0x40. */
 lcd_result_t lcd1602_set_cursor(uint8_t row, uint8_t column)
 {
     if (!lcd_ready || row >= 2U || column >= 16U)
@@ -144,7 +143,7 @@ lcd_result_t lcd1602_set_cursor(uint8_t row, uint8_t column)
     return command((uint8_t)(0x80U | (row == 0U ? 0U : 0x40U) | column));
 }
 
-/* Caller keeps text within the current row's 16 columns. */
+/* The caller must keep text within the current row. */
 lcd_result_t lcd1602_write(const char *text)
 {
     if (!lcd_ready || text == NULL)
