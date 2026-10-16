@@ -163,7 +163,68 @@ static void setup_tickless_idle_timer(void)
 }
 #endif /* defined(CYBSP_CM33_LPTIMER_0) */
 
-/* Initialize the board, display Hello World, start CM55, and run FreeRTOS. */
+/* Approximate timing only: start the music when the first lyric appears.
+ * Adjust each page's hold_ms to match your recording. */
+#define LCD_HELLO_HOLD_MS (2000U)
+
+typedef struct
+{
+    char row0[17];
+    char row1[17];
+    uint32_t hold_ms;
+} lyric_page_t;
+
+static const lyric_page_t lyric_pages[] =
+{
+    {"I need you right", "now, once I     ", 2200U},
+    {"leave you I'm   ", "strung out      ", 2200U},
+    {"If I get you,   ", "I'm slowly      ", 2200U},
+    {"breaking down   ", "                ", 2200U},
+    {"And, oh, it's   ", "hard to see you,", 2200U},
+    {"but I wish you  ", "were right here ", 2200U},
+    {"Oh, it's hard to", "leave you when I", 2200U},
+    {"get you         ", "everywhere      ", 2200U},
+    {"All this time   ", "I'm thinking we ", 2200U},
+    {"could never be a", "pair            ", 2200U},
+    {"Oh, no, I don't ", "need you, but I ", 2200U},
+    {"miss you, come  ", "here            ", 2200U},
+};
+
+/* Update both full rows so shorter phrases do not leave old characters behind. */
+static void lyrics_task(void *argument)
+{
+    (void)argument;
+    TickType_t next_page = xTaskGetTickCount();
+    vTaskDelayUntil(&next_page, pdMS_TO_TICKS(LCD_HELLO_HOLD_MS));
+
+    for (uint32_t i = 0U; i < sizeof(lyric_pages) / sizeof(lyric_pages[0]); ++i)
+    {
+        lcd_status = lcd1602_set_cursor(0U, 0U);
+        if (lcd_status == LCD_OK)
+        {
+            lcd_status = lcd1602_write(lyric_pages[i].row0);
+        }
+        if (lcd_status == LCD_OK)
+        {
+            lcd_status = lcd1602_set_cursor(1U, 0U);
+        }
+        if (lcd_status == LCD_OK)
+        {
+            lcd_status = lcd1602_write(lyric_pages[i].row1);
+        }
+        if (lcd_status != LCD_OK)
+        {
+            /* Keep the error visible in the debugger and stop further writes. */
+            break;
+        }
+        /* Absolute tick scheduling includes the time taken by I2C writes. */
+        vTaskDelayUntil(&next_page, pdMS_TO_TICKS(lyric_pages[i].hold_ms));
+    }
+    /* Play once, leaving the final page visible until reset. */
+    vTaskDelete(NULL);
+}
+
+/* Initialize the LCD, start CM55, and schedule the lyric sequence. */
 int main(void)
 {
     cy_rslt_t result;
@@ -211,6 +272,12 @@ int main(void)
 
     /* Enable global interrupts */
     __enable_irq();
+
+    if (xTaskCreate(lyrics_task, "LCD lyrics", 512U, NULL,
+                    tskIDLE_PRIORITY + 1U, NULL) != pdPASS)
+    {
+        handle_app_error();
+    }
 
     /* Start the RTOS Scheduler */
     vTaskStartScheduler();

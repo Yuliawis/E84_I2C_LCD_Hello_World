@@ -21,3 +21,8 @@ See docs/LCD_SETUP.md for hardware configuration, backpack mapping and diagnosti
 - Complete application build: PASS (CM33 secure, CM33 non-secure, CM55; signing and image merge succeeded).
 - VS Code workspace generation: PASS.
 - Board programming and physical LCD output: not performed; user hardware configuration pending.
+
+## Lyric sequence update
+- Show the user-supplied excerpt once after Hello World.
+- Use a FreeRTOS task, two 16-character rows and adjustable approximate delays.
+- No audio playback or automatic song synchronization.

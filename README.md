@@ -3,7 +3,7 @@
 Target: KIT_PSE84_AI, based on Infineon's PSOC Edge Empty Application.
 At startup the CM33 non-secure application initializes a PCF8574T backpack,
 clears the 1602 LCD, enables the backlight and writes `Hello World` on row 1.
-Row 2 remains blank. No additional middleware is required.
+Row 2 starts blank; both rows are used by the lyric sequence. No additional middleware is required.
 
 ## Your hardware configuration
 
@@ -25,3 +25,16 @@ that the device is an LCD. PCF8574A devices use a different range.
 
 Assumed backpack connections: P0=RS, P1=RW, P2=Enable, P3=backlight active high,
 P4..P7=LCD D4..D7. RW remains low. Different backpack wiring needs driver changes.
+
+## Lyric display sequence
+
+After Hello World (2 seconds), a FreeRTOS task shows the user-supplied excerpt
+of Love Me Not once. Each page uses two rows of at most 16 characters and remains
+for 2200 ms. These are approximate delays, not measured song or beat timings.
+No audio playback or beat detection is implemented. Start the excerpt when the
+first lyric appears; reset the board to replay.
+
+Edit LCD_HELLO_HOLD_MS and lyric_pages[].hold_ms in proj_cm33_ns/main.c to adjust
+the start delay and individual page durations. Rows are space-padded to remove
+previous text. If an I2C update fails, the task stops and leaves lcd_status
+available for inspection.

@@ -3,7 +3,7 @@
 Target: KIT_PSE84_AI, based on Infineon's PSOC Edge Empty Application.
 At startup the CM33 non-secure application initializes a PCF8574T backpack,
 clears the 1602 LCD, enables the backlight and writes `Hello World` on row 1.
-Row 2 remains blank. No additional middleware is required.
+Row 2 starts blank; both rows are used by the lyric sequence. No additional middleware is required.
 
 ## Your hardware configuration
 
@@ -42,10 +42,23 @@ No board programming was performed during project creation.
 Inspect CM33 `lcd_status` in the debugger: LCD_OK=0, CONFIG=1, BUS=2,
 NOT_FOUND=3, MULTIPLE_DEVICES=4. Initialization or write errors stop execution
 in `handle_app_error`. Also inspect `lcd1602_address`, `lcd1602_bus_hz`, and
-`lcd1602_last_i2c_status`. There is no UART logging or periodic refresh.
-The display retains text after initialization without ongoing bus traffic.
+`lcd1602_last_i2c_status`. There is no UART logging; the lyric task updates the display between phrases.
+The display retains the final lyric page after the sequence finishes.
 
 ## References
 
 - Board guide: https://documentation.infineon.com/psocedge/docs/cci1762693051052
 - PCF8574 datasheet: https://www.nxp.com/docs/en/data-sheet/PCF8574_PCF8574A.pdf
+
+## Lyric display sequence
+
+After Hello World (2 seconds), a FreeRTOS task shows the user-supplied excerpt
+of Love Me Not once. Each page uses two rows of at most 16 characters and remains
+for 2200 ms. These are approximate delays, not measured song or beat timings.
+No audio playback or beat detection is implemented. Start the excerpt when the
+first lyric appears; reset the board to replay.
+
+Edit LCD_HELLO_HOLD_MS and lyric_pages[].hold_ms in proj_cm33_ns/main.c to adjust
+the start delay and individual page durations. Rows are space-padded to remove
+previous text. If an I2C update fails, the task stops and leaves lcd_status
+available for inspection.
